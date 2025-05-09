@@ -1,0 +1,9 @@
+outpost-barbican>=v0.4.1
+svd2json>=0.1.6
+dts-utils>=0.2.0
+meson>=1.7.0
+sphinx_rtd_theme
+exhale
+sphinx-simplepdf
+weasyprint
+conan>=2
