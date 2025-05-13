@@ -1,0 +1,74 @@
+
+
+# SPDX-FileCopyrightText: 2023-2024 Ledger SAS
+# SPDX-License-Identifier: Apache-2.0
+
+name: Camelot SDK build for GNU/Linux x86_64 distros
+
+on:
+  push:
+  pull_request:
+    branches:
+    - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: XXX git permission quirk XXX
+        run: |
+          git config --global --add safe.directory $GITHUB_WORKSPACE
+        shell: bash
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          set-safe-directory: true
+      - name: Clone cross-files
+        uses: actions/checkout@v4
+        with:
+          ref:  'main'
+          repository: 'camelot-os/meson-cross-files'
+          path: crossfiles
+      - name: Deploy cross-files
+        run: |
+          mkdir -p $HOME/.local/share/meson/cross
+          cp -a $GITHUB_WORKSPACE/crossfiles/*.ini $HOME/.local/share/meson/cross
+          echo "MESON_CROSS_FILES=$HOME/.local/share/meson/cross" >> $GITHUB_ENV
+        shell: bash
+      - name: install prerequisites pkg
+        uses: camelot-os/action-install-pkg@v1
+        with:
+          packages: 'dtc|device-tree-compiler,libssh2-1|libssh2,curl,lld,srecord'
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          toolchain: stable
+          targets: thumbv8m.main-none-eabi
+          components: clippy,rustfmt
+      - name: Setup C toolchain
+        uses: camelot-os/action-setup-compiler@v1
+        with:
+          compiler: gcc
+          triple: arm-none-eabi
+          ref: 14.2.Rel1
+          workspace: $GITHUB_WORKSPACE
+      - name: deploy local deps
+        run: |
+          pip install -r requirements.txt
+        shell: bash
+      - name: build SDK
+        run: |
+          barbican download && barbican setup && ninja -C output/build
+        shell: bash
+      - name: generate package
+        run: |
+          conan export-pkg . -s os="Linux" -s arch="x86_64" -f json -nr --out-file conan-receipe.json
+        shell: bash
+
+
