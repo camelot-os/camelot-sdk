@@ -131,5 +131,5 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        gh release create ${{ github.ref_name }} --title nightly --generate-notes dist/*.tar.xz
+        gh release create ${{ github.ref_name }} --title ${{ github.ref_name }}  --generate-notes dist/*.tar.xz
       shell: bash
