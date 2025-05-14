@@ -29,27 +29,20 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           set-safe-directory: true
-      - name: Clone cross-files
-        uses: actions/checkout@v4
-        with:
-          ref:  'main'
-          repository: 'camelot-os/meson-cross-files'
-          path: crossfiles
-      - name: Deploy cross-files
+      - name: prepare cross file
         run: |
           mkdir -p $HOME/.local/share/meson/cross
-          cp -a $GITHUB_WORKSPACE/crossfiles/*.ini $HOME/.local/share/meson/cross
+          cp -a $GITHUB_WORKSPACE/*.ini $HOME/.local/share/meson/cross
           echo "MESON_CROSS_FILES=$HOME/.local/share/meson/cross" >> $GITHUB_ENV
         shell: bash
       - name: install prerequisites pkg
-        uses: camelot-os/action-install-pkg@v1
-        with:
-          packages: 'dtc|device-tree-compiler,libssh2-1|libssh2,curl,lld,srecord'
+        run: |
+          sudo apt-get -y install device-tree-compiler curl srecord lld doxygen pandoc
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: stable
-          targets: thumbv8m.main-none-eabi
+          toolchain: 1.86.0
+          targets: thumbv8m.main-none-eabi,x86_64-unknown-linux-gnu
           components: clippy,rustfmt
       - name: Setup C toolchain
         uses: camelot-os/action-setup-compiler@v1
@@ -61,6 +54,9 @@ jobs:
       - name: deploy local deps
         run: |
           pip install -r requirements.txt
+          cargo install cargo-index
+          git config set --global user.name "John Theci"
+          git config set --global user.email "theci@h2lab.org" 
         shell: bash
       - name: build SDK
         run: |
@@ -68,7 +64,23 @@ jobs:
         shell: bash
       - name: generate package
         run: |
+          conan profile detect
           conan export-pkg . -s os="Linux" -s arch="x86_64" -f json -nr --out-file conan-receipe.json
         shell: bash
+      - name: get back package path to prepare dist tarball
+        run: |
+          import json
+          import os
 
+          env_file = os.getenv('GITHUB_ENV')
+          with open('conan-receipe.json', 'r') as conaninfo:
+            conan_json =json.loads(conaninfo.read())
+            with open(env_file, "a") as ghenv:
+              ghenv.write("PKG_PATH=" + conan_json['graph']['nodes']['0']['immutable_package_folder'] + '\n')
+              ghenv.write("PKG_VERSION=" + conan_json['graph']['nodes']['0']['version'])
+        shell: python
+      - name: forge SDK tarball
+        run: |
+          tar -cJvf camelot-sdk-armv8m-mainline_${{ env.PKG_VERSION }}.tar.xz  -h -C ${{ env.PKG_PATH }} --transform "s,^\.,camelot-sdk-armv8m-mainline_${{ env.PKG_VERSION }}," .
+        shell: bash
 

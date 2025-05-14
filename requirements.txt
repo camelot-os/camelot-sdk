@@ -1,4 +1,4 @@
-outpost-barbican>=v0.4.1
+camelot-barbican>=v0.4.2
 svd2json>=0.1.6
 dts-utils>=0.2.0
 meson>=1.7.0
@@ -7,3 +7,4 @@ exhale
 sphinx-simplepdf
 weasyprint
 conan>=2
+dunamai
