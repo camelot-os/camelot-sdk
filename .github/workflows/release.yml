@@ -1,0 +1,135 @@
+
+
+# SPDX-FileCopyrightText: 2023-2024 Ledger SAS
+# SPDX-License-Identifier: Apache-2.0
+
+name: Camelot SDK releases for GNU/Linux x86_64 distros
+
+on:
+  push:
+    tags:
+      - v**
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  forge_matrix:
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.9.14-alpine3.16
+    steps:
+      - id: set_matrix
+        shell: python
+        run: |
+          import os
+          config = [
+              { 'target': 'armv8m-mainline', 'triple': 'thumbv8m.main-none-eabi,x86_64-unknown-linux-gnu' },
+              { 'target': 'armv7em', 'triple': 'thumbv7em-none-eabi,x86_64-unknown-linux-gnu' },
+          ]
+          with open(os.environ['GITHUB_OUTPUT'], 'w') as gh_out:
+            gh_out.write(f"config={config}\n")
+    outputs:
+      config: ${{ steps.set_matrix.outputs.config }}
+
+  build:
+    needs: forge_matrix
+    strategy:
+      matrix:
+        config: ${{ fromJSON(needs.forge_matrix.outputs.config) }}
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: XXX git permission quirk XXX
+        run: |
+          git config --global --add safe.directory $GITHUB_WORKSPACE
+        shell: bash
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          set-safe-directory: true
+      - name: prepare cross file
+        run: |
+          mkdir -p $HOME/.local/share/meson/cross
+          cp -a $GITHUB_WORKSPACE/${{ matrix.config.target }}/*.ini $HOME/.local/share/meson/cross
+          echo "MESON_CROSS_FILES=$HOME/.local/share/meson/cross" >> $GITHUB_ENV
+        shell: bash
+      - name: install prerequisites pkg
+        run: |
+          sudo apt-get -y install device-tree-compiler curl srecord lld doxygen pandoc
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          toolchain: 1.86.0
+          targets: ${{ matrix.config.triple }}
+          components: clippy,rustfmt
+      - name: Setup C toolchain
+        uses: camelot-os/action-setup-compiler@v1
+        with:
+          compiler: gcc
+          triple: arm-none-eabi
+          ref: 14.2.Rel1
+          workspace: $GITHUB_WORKSPACE
+      - name: deploy local deps
+        run: |
+          pip install -r requirements.txt
+          cargo install cargo-index
+          git config set --global user.name "John Theci"
+          git config set --global user.email "theci@h2lab.org"
+        shell: bash
+      - name: build SDK
+        run: |
+          cd ${{ matrix.config.target }} && barbican download && barbican setup && ninja -C output/build
+        shell: bash
+      - name: generate package
+        run: |
+          conan profile detect
+          cd ${{ matrix.config.target }} && conan export-pkg . -s os="Linux" -s arch="x86_64" -f json -nr --out-file $GITHUB_WORKSPACE/conan-receipe.json
+        shell: bash
+      - name: get back package path to prepare dist tarball
+        run: |
+          import json
+          import os
+
+          env_file = os.getenv('GITHUB_ENV')
+          with open('conan-receipe.json', 'r') as conaninfo:
+            conan_json =json.loads(conaninfo.read())
+            with open(env_file, "a") as ghenv:
+              ghenv.write("PKG_PATH=" + conan_json['graph']['nodes']['0']['immutable_package_folder'] + '\n')
+              ghenv.write("PKG_VERSION=" + conan_json['graph']['nodes']['0']['version'])
+        shell: python
+      - name: forge SDK tarball
+        run: |
+          tar -cJvf camelot-sdk-${{ matrix.config.target }}_${{ env.PKG_VERSION }}.tar.xz  -h -C ${{ env.PKG_PATH }} --transform "s,^\.,camelot-sdk-${{ matrix.config.target }}_${{ env.PKG_VERSION }}," .
+        shell: bash
+      - uses: actions/upload-artifact@v4
+        with:
+          name: camelot-sdk-${{ matrix.config.target }}
+          path: camelot-sdk-${{ matrix.config.target }}_${{ env.PKG_VERSION }}.tar.xz
+
+  publish_release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    # required to allow gh to work
+    - uses: actions/checkout@v4
+    # download all previously delivered artifacts of the current run. This will
+    # store multiple tarballs locally
+    - name: Retrieve Artifact
+      uses: actions/download-artifact@v4
+      with:
+        path: dist
+        merge-multiple: true
+    - run: |
+        ls dist
+      shell: bash
+    - name: deploy release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release create ${{ github.ref_name }} --title nightly --generate-notes dist/*.tar.xz
+      shell: bash
