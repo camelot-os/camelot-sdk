@@ -9,12 +9,13 @@ class camelotSdkRecipe(ConanFile):
     name = "camelot-sdk"
     settings = "os", "arch"
     user = "camelot-os"
-    description = """This is the pre-build Camelot SDK for nucleo-u5a5zj board
-                  A complete set of tools, headers and pre-built arm-none-eabi binaries
-                  for the official STM32 nucleo board"""
+    description = """This is the pre-build Camelot SDK for armv8m-mainline based SoCs.
+                  See the kernel documentation for the SoCs that have been tested.
+                  A complete set of tools, headers and pre-built binaries
+                  for the corresponding architecture, alongside sources for projects generation"""
     topics = ("camelot","sdk")
     homepage = "https://github.com/camelot-os"
-    url = "https://github.com/camelot-os/outpost-sdk-nucleo-u5a5zj"
+    url = "https://github.com/camelot-os/camelot-sdk"
 
     def set_version(self):
         git = Git(self)

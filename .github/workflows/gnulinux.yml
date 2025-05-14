@@ -17,6 +17,9 @@ concurrency:
 
 jobs:
   build:
+    strategy:
+      matrix:
+        target: [ 'armv8m-mainline', 'armv7em' ]
     name: build
     runs-on: ubuntu-latest
     steps:
@@ -32,7 +35,7 @@ jobs:
       - name: prepare cross file
         run: |
           mkdir -p $HOME/.local/share/meson/cross
-          cp -a $GITHUB_WORKSPACE/*.ini $HOME/.local/share/meson/cross
+          cp -a $GITHUB_WORKSPACE/${{ matrix.target }}/*.ini $HOME/.local/share/meson/cross
           echo "MESON_CROSS_FILES=$HOME/.local/share/meson/cross" >> $GITHUB_ENV
         shell: bash
       - name: install prerequisites pkg
@@ -42,7 +45,7 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly
         with:
           toolchain: 1.86.0
-          targets: thumbv8m.main-none-eabi,x86_64-unknown-linux-gnu
+          targets: thumbv7em-none-eabi,thumbv8m.main-none-eabi,x86_64-unknown-linux-gnu
           components: clippy,rustfmt
       - name: Setup C toolchain
         uses: camelot-os/action-setup-compiler@v1
@@ -60,12 +63,12 @@ jobs:
         shell: bash
       - name: build SDK
         run: |
-          barbican download && barbican setup && ninja -C output/build
+          cd ${{ matrix.target }} && barbican download && barbican setup && ninja -C output/build
         shell: bash
       - name: generate package
         run: |
           conan profile detect
-          conan export-pkg . -s os="Linux" -s arch="x86_64" -f json -nr --out-file conan-receipe.json
+          cd ${{ matrix.target }} && conan export-pkg . -s os="Linux" -s arch="x86_64" -f json -nr --out-file $GITHUB_WORKSPACE/conan-receipe.json
         shell: bash
       - name: get back package path to prepare dist tarball
         run: |

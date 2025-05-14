@@ -1,7 +1,7 @@
-name = 'barbican-sdk-nucleo-u5a5'
+name = 'camelot-sdk-armv7em'
 license = 'Apache-2.0'
 license_file = ['LICENSE.txt']
-dts = 'dts/nucleo_u5a5.dts'
+dts = 'dts/nucleo_f401.dts'
 crossfile = 'arm-none-eabi-gcc.ini'
 version = 'v0.1.0'
 
