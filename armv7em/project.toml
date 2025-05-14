@@ -7,12 +7,12 @@ version = 'v0.1.0'
 
 [kernel]
 scm.git.uri = 'https://github.com/camelot-os/sentry-kernel.git'
-scm.git.revision = 'main'
+scm.git.revision = 'v0.4.1'
 build.options.with_doc = true
 config = 'configs/sentry/sentry.config'
 
 [runtime]
 scm.git.uri = 'https://github.com/camelot-os/shield.git'
-scm.git.revision = 'main'
+scm.git.revision = 'v0.1.0'
 config = 'configs/shield/shield.config'
 
