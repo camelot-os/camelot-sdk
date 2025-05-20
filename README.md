@@ -7,18 +7,59 @@ The content of the SDK is stored in the project.toml file, listing overall compo
 SDK components configuration for the current board is set in the `configs` directory, while the current board
 device tree is set in the `dts` directory.
 
-## SDK build-dependencies
+## SDK build-dependencies (Debian/ubuntu)
+
+Install the (Debian/Ubuntu) dependencies :
+```
+apt install meson doxygen srecord pandoc python3-pip pkg-config gcc-arm-none-eabi curl device-tree-compiler git
+```
+
+Clone the SDK : 
+```
+git clone https://github.com/camelot-os/camelot-sdk.git
+```
+
+Create a new Python3 virtual env for the Camelot SDK:
+```
+cd camelot-sdk
+python3 -m venv .venv
+source .venv/bin/activate
+```
 
 Download the python dependencies first, including the barbican Camelot project management tool:
-
 ```
 pip install -r requirements.txt
 ```
 
-Be sure to have the C cross-toolchain and the Rust toolchain for the Cortex-M33 target, meaning:
+Be sure to have the C cross-toolchain and the Rust toolchain for the Cortex-M33 target. To do so, first create a cross directory for meson :
+```
+mkdir -p /home/$USER/.local/share/meson/cross
+```
 
-* the usual GCC arm-none-eabi toolchain, in a decently recent version (>=10).
-* the rust thumbv8m.main-none-eabi toolchain, using rustup as usual for installation
+Copy the chosen .ini file into the newly created directory:
+```
+cp armv8m-mainline/arm-none-eabi-gcc.ini /home/$USER/.local/share/meson/cross/
+```
+
+Edit the copied file and update the cross_toolchain value to '/usr/' like this:
+```
+cross_toolchain = '/usr/'
+```
+
+Install the rustup stable toolchain :
+```
+curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable  -y
+```
+
+Once installed, source the env file :
+```
+source "$HOME/.cargo/env"
+```
+
+Install the rust thumbv8m.main-none-eabi target :
+```
+rustup target add thumbv8m.main-none-eabi
+```
 
 Barbican also requires cargo-index crate in order to manipulate Rust package properly to be included as a
 fully standalone, offline, SDK, please install it using cargo:
@@ -29,7 +70,7 @@ cargo install cargo-index
 
 ## Building the SDK
 
-The SDK can now be built using the barbican camelot project tool
+The SDK can now be built using the barbican camelot project tool.
 
 First download the SDK components, including, at least but not limited to, the Camelot kernel and runtime.
 
