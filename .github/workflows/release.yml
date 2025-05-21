@@ -114,6 +114,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
     # required to allow gh to work
     - uses: actions/checkout@v4
@@ -127,6 +129,10 @@ jobs:
     - run: |
         ls dist
       shell: bash
+    # forge attestation for release
+    - uses: actions/attest@v2
+      with:
+        subject-path:  dist/*.*
     - name: deploy release
       env:
         GH_TOKEN: ${{ github.token }}
