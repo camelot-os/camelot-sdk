@@ -30,19 +30,19 @@ class camelotSdkRecipe(ConanFile):
         _arch = str(self.settings.arch).lower()
         self.folders.build = os.path.join("output", "staging")
         self.folders.source = os.path.join("output", "src")
-        self.cpp.source.includedirs = ["usr/local/include"]
+        self.cpp.build.includedirs = ["usr/local/include"]
         self.cpp.build.libdirs = ["usr/local/lib"]
         self.cpp.build.bindirs = ["usr/local/bin"]
         self.cpp_info.resdirs = ["usr/local/share"]
         self.cpp_info.srcdirs = ["."]
 
     def package(self):
-        local_include_folder = os.path.join(self.source_folder, self.cpp.source.includedirs[0])
+        local_include_folder = os.path.join(self.build_folder, self.cpp.build.includedirs[0])
         local_lib_folder = os.path.join(self.build_folder, self.cpp.build.libdirs[0])
         local_bin_folder = os.path.join(self.build_folder, self.cpp.build.bindirs[0])
         local_res_folder = os.path.join(self.build_folder, self.cpp_info.resdirs[0])
         local_src_folder = os.path.join(self.source_folder, self.cpp_info.srcdirs[0])
-        copy(self, "*.h", local_include_folder, os.path.join(self.package_folder, "include"), keep_path=False)
+        copy(self, "*.h", local_include_folder, os.path.join(self.package_folder, "include"), keep_path=True)
         copy(self, "*.a", local_lib_folder, os.path.join(self.package_folder, "lib"), keep_path=False)
         copy(self, "*.pc", local_lib_folder, os.path.join(self.package_folder, "lib"), keep_path=True)
         copy(self, "*", local_bin_folder, os.path.join(self.package_folder, "bin"), keep_path=False, excludes=["*.bin","*.hex","*.elf"])
